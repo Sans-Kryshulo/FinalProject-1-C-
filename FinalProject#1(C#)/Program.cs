@@ -9,6 +9,7 @@ namespace QuizApp
     {
         static string usersFilePath = "users.txt";
         static string quizzesFilePath = "quizzes.txt";
+        static string resultsFilePath = "results.txt";
         static Dictionary<string, User> users = new Dictionary<string, User>();
         static Dictionary<string, List<Question>> quizzes = new Dictionary<string, List<Question>>();
         static List<QuizResult> quizResults = new List<QuizResult>();
@@ -17,11 +18,13 @@ namespace QuizApp
         {
             LoadUsersFromFile();
             LoadQuizzesFromFile();
+            LoadResultsFromFile();
 
             Console.WriteLine("Welcome to the Quiz App!");
 
             while (true)
             {
+                Console.Clear();
                 Console.WriteLine("1. Login\n2. Register\n3. Manage Quizzes\n4. Exit");
                 Console.Write("Select an option: ");
                 string option = Console.ReadLine();
@@ -40,6 +43,7 @@ namespace QuizApp
                     case "4":
                         SaveUsersToFile();
                         SaveQuizzesToFile();
+                        SaveResultsToFile();
                         return;
                     default:
                         Console.WriteLine("Invalid option. Try again.");
@@ -125,8 +129,31 @@ namespace QuizApp
             File.WriteAllLines(quizzesFilePath, lines);
         }
 
+        static void LoadResultsFromFile()
+        {
+            if (File.Exists(resultsFilePath))
+            {
+                var lines = File.ReadAllLines(resultsFilePath);
+                foreach (var line in lines)
+                {
+                    var parts = line.Split(',');
+                    if (parts.Length == 4 && int.TryParse(parts[1], out int score) && DateTime.TryParse(parts[2], out DateTime date))
+                    {
+                        quizResults.Add(new QuizResult(parts[0], score, date, parts[3]));
+                    }
+                }
+            }
+        }
+
+        static void SaveResultsToFile()
+        {
+            var lines = quizResults.Select(r => $"{r.UserLogin},{r.Score},{r.Date:yyyy-MM-dd HH:mm:ss},{r.Category}");
+            File.WriteAllLines(resultsFilePath, lines);
+        }
+
         static void Login()
         {
+            Console.Clear();
             Console.Write("Enter login: ");
             string login = Console.ReadLine();
             Console.Write("Enter password: ");
@@ -140,23 +167,26 @@ namespace QuizApp
             else
             {
                 Console.WriteLine("Invalid login or password.");
+                Console.ReadKey();
             }
         }
 
         static void Register()
         {
+            Console.Clear();
             Console.Write("Enter login: ");
             string login = Console.ReadLine();
 
             if (users.ContainsKey(login))
             {
                 Console.WriteLine("This login is already taken.");
+                Console.ReadKey();
                 return;
             }
 
             Console.Write("Enter password: ");
             string password = Console.ReadLine();
-            Console.Write("Enter your date of birth (yyyy-mm-dd): ");
+            Console.Write("Enter your date of birth (yyyy-MM-dd): ");
             if (DateTime.TryParse(Console.ReadLine(), out DateTime dateOfBirth))
             {
                 var user = new User(login, password, dateOfBirth);
@@ -168,12 +198,14 @@ namespace QuizApp
             {
                 Console.WriteLine("Invalid date format.");
             }
+            Console.ReadKey();
         }
 
         static void ManageQuizzes()
         {
             while (true)
             {
+                Console.Clear();
                 Console.WriteLine("1. Create a new quiz\n2. Edit an existing quiz\n3. Back");
                 Console.Write("Select an option: ");
                 string option = Console.ReadLine();
@@ -190,6 +222,7 @@ namespace QuizApp
                         return;
                     default:
                         Console.WriteLine("Invalid option. Try again.");
+                        Console.ReadKey();
                         break;
                 }
             }
@@ -197,12 +230,14 @@ namespace QuizApp
 
         static void CreateQuiz()
         {
+            Console.Clear();
             Console.Write("Enter quiz category: ");
             string category = Console.ReadLine();
 
             if (quizzes.ContainsKey(category))
             {
                 Console.WriteLine("This category already exists.");
+                Console.ReadKey();
                 return;
             }
 
@@ -210,6 +245,7 @@ namespace QuizApp
 
             for (int i = 0; i < 20; i++)
             {
+                Console.Clear();
                 Console.WriteLine($"\nQuestion {i + 1}:");
                 Console.Write("Enter question text: ");
                 string text = Console.ReadLine();
@@ -224,16 +260,19 @@ namespace QuizApp
             quizzes[category] = questions;
             Console.WriteLine("Quiz created successfully!");
             SaveQuizzesToFile();
+            Console.ReadKey();
         }
 
         static void EditQuiz()
         {
+            Console.Clear();
             Console.Write("Enter quiz category to edit: ");
             string editCategory = Console.ReadLine();
 
             if (!quizzes.ContainsKey(editCategory))
             {
                 Console.WriteLine("This category does not exist.");
+                Console.ReadKey();
                 return;
             }
 
@@ -241,6 +280,7 @@ namespace QuizApp
 
             for (int i = 0; i < questions.Count; i++)
             {
+                Console.Clear();
                 Console.WriteLine($"\nQuestion {i + 1}: {questions[i].Text}");
                 Console.Write("Edit question text (leave blank to keep unchanged): ");
                 string newText = Console.ReadLine();
@@ -266,13 +306,15 @@ namespace QuizApp
 
             Console.WriteLine("Quiz updated successfully!");
             SaveQuizzesToFile();
+            Console.ReadKey();
         }
 
         static void UserMenu(User user)
         {
             while (true)
             {
-                Console.WriteLine("\n1. Start a new quiz\n2. View past results\n3. View Top-20 quiz results\n4. Change settings\n5. Logout");
+                Console.Clear();
+                Console.WriteLine("\n1. Start a new quiz\n2. View past results\n3. View Top-20 quiz results\n4. View Profile\n5. Change settings\n6. Logout\n7. View last quiz details");
                 Console.Write("Select an option: ");
                 string option = Console.ReadLine();
 
@@ -288,12 +330,19 @@ namespace QuizApp
                         ViewTop20Results();
                         break;
                     case "4":
-                        ChangeSettings(user);
+                        ViewProfile(user);
                         break;
                     case "5":
+                        ChangeSettings(user);
+                        break;
+                    case "6":
                         return;
+                    case "7":
+                        ViewLastQuizDetails();
+                        break;
                     default:
                         Console.WriteLine("Invalid option. Try again.");
+                        Console.ReadKey();
                         break;
                 }
             }
@@ -301,14 +350,30 @@ namespace QuizApp
 
         static void StartQuiz(User user)
         {
+            Console.Clear();
             Console.WriteLine("Available categories:");
-            foreach (var category in quizzes.Keys)
+            var categoryList = quizzes.Keys.ToList();
+            for (int i = 0; i < categoryList.Count; i++)
             {
-                Console.WriteLine(category);
+                Console.WriteLine($"{i + 1}. {categoryList[i]}");
             }
 
-            Console.Write("Enter category or type 'mixed' for a random quiz: ");
-            string selectedCategory = Console.ReadLine();
+            Console.Write("Enter the number of the category or type '0' for mixed: ");
+            if (!int.TryParse(Console.ReadLine(), out int categoryIndex) || categoryIndex < 0 || categoryIndex > categoryList.Count)
+            {
+                Console.WriteLine("Invalid selection.");
+                Console.ReadKey();
+                return;
+            }
+
+            string selectedCategory = categoryIndex == 0 ? "mixed" : categoryList[categoryIndex - 1];
+            string lastQuizFilePath = "last_quiz_details.txt";
+
+            using (StreamWriter writer = new StreamWriter(lastQuizFilePath, false))
+            {
+                writer.WriteLine($"Last Quiz Details (Category: {selectedCategory})");
+                writer.WriteLine(new string('-', 50));
+            }
 
             List<Question> questions;
             if (selectedCategory.ToLower() == "mixed")
@@ -322,14 +387,17 @@ namespace QuizApp
             else
             {
                 Console.WriteLine("Invalid category.");
+                Console.ReadKey();
                 return;
             }
 
             int correctAnswers = 0;
+            //string lastQuizFilePath = "last_quiz_details.txt";
 
             foreach (var question in questions)
             {
-                Console.WriteLine($"\n{question.Text}");
+                Console.Clear();
+                Console.WriteLine($"Question {questions.IndexOf(question) + 1}: {question.Text}");
                 for (int i = 0; i < question.Options.Length; i++)
                 {
                     Console.WriteLine($"{i + 1}. {question.Options[i]}");
@@ -347,48 +415,98 @@ namespace QuizApp
                 {
                     correctAnswers++;
                 }
+
+                using (StreamWriter writer = new StreamWriter(lastQuizFilePath, true))
+                {
+                    writer.WriteLine($"Question {questions.IndexOf(question) + 1}: {question.Text}");
+                    writer.WriteLine("Options:");
+                    for (int i = 0; i < question.Options.Length; i++)
+                    {
+                        writer.WriteLine($"  {i + 1}. {question.Options[i]}");
+                    }
+                    writer.WriteLine($"Your Answers: {string.Join(", ", userAnswers)}");
+                    writer.WriteLine($"Correct Answers: {string.Join(", ", question.CorrectAnswers)}");
+                    writer.WriteLine($"Result: {(userAnswers.OrderBy(a => a).SequenceEqual(question.CorrectAnswers.OrderBy(a => a)) ? "Correct" : "Incorrect")}");
+                    writer.WriteLine(new string('-', 50));
+                }
             }
 
+            Console.Clear();
             Console.WriteLine($"\nYou answered {correctAnswers} out of {questions.Count} correctly.");
-            quizResults.Add(new QuizResult(user.Login, correctAnswers, DateTime.Now));
+            quizResults.Add(new QuizResult(user.Login, correctAnswers, DateTime.Now, selectedCategory));
+            SaveResultsToFile();
+            Console.ReadKey();
         }
 
         static void ViewPastResults(User user)
         {
+            Console.Clear();
             var userResults = quizResults.Where(q => q.UserLogin == user.Login).ToList();
 
             if (!userResults.Any())
             {
                 Console.WriteLine("No quiz results found.");
+                Console.ReadKey();
                 return;
             }
 
             Console.WriteLine("Your past results:");
             foreach (var result in userResults)
             {
-                Console.WriteLine($"Date: {result.Date}, Score: {result.Score}");
+                Console.WriteLine($"Category: {result.Category}, Date: {result.Date}, Score: {result.Score}");
             }
+            Console.ReadKey();
         }
 
         static void ViewTop20Results()
         {
+            Console.Clear();
             var topResults = quizResults.OrderByDescending(q => q.Score).Take(20).ToList();
 
             if (!topResults.Any())
             {
                 Console.WriteLine("No results available.");
+                Console.ReadKey();
                 return;
             }
 
             Console.WriteLine("Top-20 results:");
             foreach (var result in topResults)
             {
-                Console.WriteLine($"User: {result.UserLogin}, Score: {result.Score}, Date: {result.Date}");
+                Console.WriteLine($"User: {result.UserLogin}, Score: {result.Score}, Date: {result.Date}, Category: {result.Category}");
             }
+            Console.ReadKey();
+        }
+
+        static void ViewProfile(User user)
+        {
+            Console.Clear();
+            Console.WriteLine("Your Profile:");
+            Console.WriteLine($"Login: {user.Login}");
+            Console.WriteLine($"Date of Birth: {user.DateOfBirth:yyyy-MM-dd}");
+            Console.ReadKey();
+        }
+        static void ViewLastQuizDetails()
+        {
+            string lastQuizFilePath = "last_quiz_details.txt";
+
+            if (!File.Exists(lastQuizFilePath))
+            {
+                Console.WriteLine("No details available for the last quiz.");
+                Console.ReadKey();
+                return;
+            }
+
+            Console.Clear();
+            Console.WriteLine("Details of the Last Quiz:");
+            Console.WriteLine(new string('=', 50));
+            Console.WriteLine(File.ReadAllText(lastQuizFilePath));
+            Console.ReadKey();
         }
 
         static void ChangeSettings(User user)
         {
+            Console.Clear();
             Console.WriteLine("1. Change password\n2. Change date of birth");
             Console.Write("Select an option: ");
             string option = Console.ReadLine();
@@ -402,7 +520,7 @@ namespace QuizApp
                     SaveUsersToFile();
                     break;
                 case "2":
-                    Console.Write("Enter new date of birth (yyyy-mm-dd): ");
+                    Console.Write("Enter new date of birth (yyyy-MM-dd): ");
                     if (DateTime.TryParse(Console.ReadLine(), out DateTime newDob))
                     {
                         user.DateOfBirth = newDob;
@@ -418,6 +536,7 @@ namespace QuizApp
                     Console.WriteLine("Invalid option.");
                     break;
             }
+            Console.ReadKey();
         }
     }
 
@@ -455,11 +574,13 @@ namespace QuizApp
         public int Score { get; }
         public DateTime Date { get; }
 
-        public QuizResult(string userLogin, int score, DateTime date)
+        public string Category { get; }
+        public QuizResult(string userLogin, int score, DateTime date, string category)
         {
             UserLogin = userLogin;
             Score = score;
             Date = date;
+            Category = category;
         }
     }
 }
